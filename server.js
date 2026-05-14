@@ -3,9 +3,9 @@ const fs = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
 
-const rootDir = __dirname;
+const rootDir = path.join(__dirname, "public");
 const dataDir = path.join(rootDir, "data");
-const itemsPath = path.join(dataDir, "items.json");
+const itemsPath = path.join(__dirname, "data", "items.json");
 const port = Number(process.env.PORT || 4173);
 const adminPassword = process.env.ADMIN_PASSWORD || "change-moi";
 const sessions = new Map();
@@ -114,7 +114,7 @@ async function readItems() {
 }
 
 async function writeItems(items) {
-  await fs.mkdir(dataDir, { recursive: true });
+  await fs.mkdir(path.dirname(itemsPath), { recursive: true });
   await fs.writeFile(itemsPath, `${JSON.stringify(items, null, 2)}\n`, "utf8");
 }
 
