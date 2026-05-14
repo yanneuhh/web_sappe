@@ -352,6 +352,11 @@ select {
   font-size: 12px;
 }
 
+option {
+  background: var(--panel);
+  color: var(--text);
+}
+
 .search-box,
 .price-filter {
   min-height: 46px;

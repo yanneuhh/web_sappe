@@ -43,7 +43,7 @@ loginForm.addEventListener("submit", async (event) => {
   });
 
   if (!response.ok) {
-    loginError.textContent = "Mot de passe incorrect.";
+    loginError.textContent = await getResponseError(response, "Mot de passe incorrect.");
     return;
   }
 
@@ -75,7 +75,7 @@ itemForm.addEventListener("submit", async (event) => {
   });
 
   if (!response.ok) {
-    formError.textContent = "Ajout refuse. Reconnecte-toi en admin.";
+    formError.textContent = await getResponseError(response, "Ajout refuse.");
     return;
   }
 
@@ -110,8 +110,7 @@ grid.addEventListener("click", async (event) => {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Suppression refusee." }));
-    window.alert(error.error || "Suppression refusee.");
+    window.alert(await getResponseError(response, "Suppression refusee."));
     return;
   }
 
@@ -231,6 +230,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+async function getResponseError(response, fallback) {
+  const payload = await response.json().catch(() => ({}));
+  return payload.error || fallback;
 }
 
 bootstrap().catch(() => {

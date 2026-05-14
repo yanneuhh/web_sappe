@@ -27,6 +27,14 @@ module.exports = async function handler(request, response) {
     return sendJson(response, 200, { deleted: true });
   } catch (error) {
     console.error(error);
+    if (
+      error.code === "EDGE_CONFIG_WRITE_REQUIRED" ||
+      error.code === "EDGE_CONFIG_WRITE_UNAUTHORIZED" ||
+      error.code === "EDGE_CONFIG_WRITE_FAILED" ||
+      error.code === "EDGE_CONFIG_READ_FAILED"
+    ) {
+      return sendJson(response, 503, { error: error.message });
+    }
     return sendJson(response, 500, { error: "Erreur serveur." });
   }
 };

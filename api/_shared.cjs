@@ -2,26 +2,26 @@ const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const itemsKey = "archive-bak:items";
-const sessionPrefix = "archive-bak:session:";
 const localItemsPath = path.join(process.cwd(), "data", "items.json");
 
 async function readItems() {
-  if (hasKv()) {
-    const stored = await kvGet(itemsKey);
-    if (Array.isArray(stored)) return stored;
-
-    const seed = await readLocalItems();
-    await kvSet(itemsKey, seed);
-    return seed;
+  const edgeConfig = getEdgeConfigConnection();
+  if (edgeConfig) {
+    try {
+      return await fetchEdgeConfigItems(edgeConfig);
+    } catch (error) {
+      if (error.code !== "EDGE_CONFIG_READ_FAILED") throw error;
+      if (process.env.VERCEL) throw error;
+    }
   }
 
   return readLocalItems();
 }
 
 async function writeItems(items) {
-  if (hasKv()) {
-    await kvSet(itemsKey, items);
+  const edgeConfig = getEdgeConfigConnection();
+  if (edgeConfig) {
+    await writeEdgeConfigItems(edgeConfig, items);
     return;
   }
 
@@ -31,41 +31,27 @@ async function writeItems(items) {
 }
 
 async function readLocalItems() {
-  const content = await fs.readFile(localItemsPath, "utf8");
-  return JSON.parse(content);
+  try {
+    const content = await fs.readFile(localItemsPath, "utf8");
+    const items = JSON.parse(content);
+    return Array.isArray(items) ? items : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 async function createSession() {
-  const token = crypto.randomBytes(32).toString("hex");
-
-  if (hasKv()) {
-    await kvSet(`${sessionPrefix}${token}`, { createdAt: Date.now() }, 60 * 60 * 24 * 30);
-  } else {
-    assertWritableLocalStorage();
-    await writeLocalSession(token);
-  }
-
-  return token;
+  return createSignedSessionToken();
 }
 
 async function destroySession(token) {
-  if (!token) return;
-  if (hasKv()) {
-    await kvDel(`${sessionPrefix}${token}`);
-  } else {
-    await deleteLocalSession(token);
-  }
+  return token;
 }
 
 async function isAdminRequest(request) {
   const token = getSessionToken(request);
-  if (!token) return false;
-
-  if (hasKv()) {
-    return Boolean(await kvGet(`${sessionPrefix}${token}`));
-  }
-
-  return localSessionExists(token);
+  return verifySignedSessionToken(token);
 }
 
 function getSessionToken(request) {
@@ -83,6 +69,55 @@ function makeSessionCookie(token) {
 function clearSessionCookie() {
   const secure = process.env.VERCEL ? "; Secure" : "";
   return `archive_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`;
+}
+
+function createSignedSessionToken() {
+  const payload = {
+    role: "admin",
+    exp: Date.now() + 1000 * 60 * 60 * 24 * 30,
+    nonce: crypto.randomBytes(12).toString("hex"),
+  };
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  return `${encodedPayload}.${signValue(encodedPayload)}`;
+}
+
+function verifySignedSessionToken(token) {
+  if (!token || typeof token !== "string" || !token.includes(".")) return false;
+
+  const [encodedPayload, signature] = token.split(".");
+  if (!encodedPayload || !signature) return false;
+
+  const expected = signValue(encodedPayload);
+  if (!timingSafeEqual(signature, expected)) return false;
+
+  try {
+    const payload = JSON.parse(base64UrlDecode(encodedPayload));
+    return payload.role === "admin" && Number(payload.exp) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function signValue(value) {
+  return crypto.createHmac("sha256", getSessionSecret()).update(value).digest("base64url");
+}
+
+function getSessionSecret() {
+  return process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "archive-bak-local-secret";
+}
+
+function timingSafeEqual(a, b) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function base64UrlDecode(value) {
+  return Buffer.from(value, "base64url").toString("utf8");
 }
 
 function validateItem(body) {
@@ -136,50 +171,100 @@ function methodNotAllowed(response) {
   return sendJson(response, 405, { error: "Methode non autorisee." });
 }
 
-function hasKv() {
-  return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-}
+function getEdgeConfigConnection() {
+  const raw = process.env.EDGE_CONFIG;
+  if (!raw) return null;
 
-function assertWritableLocalStorage() {
-  if (process.env.VERCEL) {
-    throw new Error("KV_REST_API_URL et KV_REST_API_TOKEN sont requis pour les actions admin sur Vercel.");
+  try {
+    if (raw.startsWith("edge-config:")) {
+      const params = new URLSearchParams(raw.slice("edge-config:".length));
+      const id = params.get("id") || params.get("edgeConfigId") || "";
+      const token = params.get("token") || params.get("readToken") || "";
+      if (!id || !token) return null;
+      return { id, token };
+    }
+
+    const url = new URL(raw);
+    const id = url.pathname.split("/").filter(Boolean)[0] || url.searchParams.get("id") || url.searchParams.get("edgeConfigId") || "";
+    const token = url.searchParams.get("token") || url.searchParams.get("readToken") || "";
+    if (!id || !token) return null;
+    return { id, token };
+  } catch {
+    return null;
   }
 }
 
-async function kvGet(key) {
-  const result = await kvRequest(["get", key]);
-  return result;
-}
-
-async function kvSet(key, value, exSeconds) {
-  const command = exSeconds ? ["set", key, JSON.stringify(value), "EX", String(exSeconds)] : ["set", key, JSON.stringify(value)];
-  await kvRequest(command);
-}
-
-async function kvDel(key) {
-  await kvRequest(["del", key]);
-}
-
-async function kvRequest(command) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}/pipeline`, {
-    method: "POST",
+async function fetchEdgeConfigItems(edgeConfig) {
+  const response = await fetch(`https://edge-config.vercel.com/${edgeConfig.id}/items`, {
     headers: {
-      Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      "Content-Type": "application/json",
+      Authorization: `Bearer ${edgeConfig.token}`,
     },
-    body: JSON.stringify([command]),
   });
 
   if (!response.ok) {
-    throw new Error(`KV request failed: ${response.status}`);
+    const error = new Error(`Erreur lecture Edge Config (${response.status}). Verifie EDGE_CONFIG.`);
+    error.code = "EDGE_CONFIG_READ_FAILED";
+    throw error;
   }
 
-  const [entry] = await response.json();
-  if (entry.error) throw new Error(entry.error);
-  return parseKvValue(entry.result);
+  const rawItems = await response.json();
+  if (!Array.isArray(rawItems)) return [];
+
+  const catalogItem = rawItems.find((item) => item && item.key === "catalog");
+  if (!catalogItem) return [];
+
+  const catalog = parseEdgeValue(catalogItem.value);
+  if (!Array.isArray(catalog)) return [];
+
+  return catalog
+    .filter((entry) => entry && !entry.deleted)
+    .map((entry) => ({ ...entry }))
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-function parseKvValue(value) {
+async function writeEdgeConfigItems(edgeConfig, items) {
+  const token = process.env.VERCEL_TOKEN;
+  if (!token) {
+    const error = new Error("VERCEL_TOKEN manquant. Ajoute un token Vercel pour ecrire dans Edge Config.");
+    error.code = "EDGE_CONFIG_WRITE_UNAUTHORIZED";
+    throw error;
+  }
+
+  const apiUrl = new URL(`https://api.vercel.com/v1/edge-config/${encodeURIComponent(edgeConfig.id)}/items`);
+  if (process.env.VERCEL_TEAM_ID) {
+    apiUrl.searchParams.set("teamId", process.env.VERCEL_TEAM_ID);
+  }
+  if (process.env.VERCEL_TEAM_SLUG) {
+    apiUrl.searchParams.set("slug", process.env.VERCEL_TEAM_SLUG);
+  }
+
+  const response = await fetch(apiUrl, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      items: [
+        {
+          operation: "create",
+          key: "catalog",
+          value: items,
+          description: "Archive Bak catalog",
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    const error = new Error(`Erreur ecriture Edge Config (${response.status}). Verifie VERCEL_TOKEN et EDGE_CONFIG. ${details}`.trim());
+    error.code = "EDGE_CONFIG_WRITE_FAILED";
+    throw error;
+  }
+}
+
+function parseEdgeValue(value) {
   if (typeof value !== "string") return value;
   try {
     return JSON.parse(value);
@@ -188,26 +273,11 @@ function parseKvValue(value) {
   }
 }
 
-async function writeLocalSession(token) {
-  const sessionDir = path.join(process.cwd(), ".sessions");
-  await fs.mkdir(sessionDir, { recursive: true });
-  await fs.writeFile(path.join(sessionDir, `${token}.json`), JSON.stringify({ createdAt: Date.now() }), "utf8");
-}
-
-async function deleteLocalSession(token) {
-  try {
-    await fs.unlink(path.join(process.cwd(), ".sessions", `${token}.json`));
-  } catch {
-    // Session already gone.
-  }
-}
-
-async function localSessionExists(token) {
-  try {
-    await fs.access(path.join(process.cwd(), ".sessions", `${token}.json`));
-    return true;
-  } catch {
-    return false;
+function assertWritableLocalStorage() {
+  if (process.env.VERCEL) {
+    const error = new Error("Edge Config non configure pour l'ecriture. Ajoute VERCEL_TOKEN et EDGE_CONFIG.");
+    error.code = "EDGE_CONFIG_WRITE_REQUIRED";
+    throw error;
   }
 }
 
