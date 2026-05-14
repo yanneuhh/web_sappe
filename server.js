@@ -76,6 +76,28 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 201, newItem);
     }
 
+    if (url.pathname === "/api/delete-item" && request.method === "POST") {
+      if (!isAdminRequest(request)) {
+        return sendJson(response, 403, { error: "Session admin expiree. Reconnecte-toi." });
+      }
+
+      const body = await readJsonBody(request);
+      const itemId = String(body.id || "").trim();
+      if (!itemId) {
+        return sendJson(response, 400, { error: "Article invalide." });
+      }
+
+      const items = await readItems();
+      const nextItems = items.filter((item) => item.id !== itemId);
+
+      if (nextItems.length === items.length) {
+        return sendJson(response, 404, { error: "Article introuvable." });
+      }
+
+      await writeItems(nextItems);
+      return sendJson(response, 200, { deleted: true });
+    }
+
     if (itemDeleteMatch && request.method === "DELETE") {
       if (!isAdminRequest(request)) {
         return sendJson(response, 403, { error: "Acces admin requis." });

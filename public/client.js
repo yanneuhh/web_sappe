@@ -37,6 +37,7 @@ loginForm.addEventListener("submit", async (event) => {
 
   const response = await fetch("/api/login", {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password: document.querySelector("#passwordInput").value }),
   });
@@ -68,6 +69,7 @@ itemForm.addEventListener("submit", async (event) => {
 
   const response = await fetch("/api/items", {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(newItem),
   });
@@ -100,9 +102,16 @@ grid.addEventListener("click", async (event) => {
   const confirmed = window.confirm(`Supprimer "${item.name}" ?`);
   if (!confirmed) return;
 
-  const response = await fetch(`/api/items/${encodeURIComponent(itemId)}`, { method: "DELETE" });
+  const response = await fetch("/api/delete-item", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: itemId }),
+  });
+
   if (!response.ok) {
-    window.alert("Suppression refusee. Reconnecte-toi en admin.");
+    const error = await response.json().catch(() => ({ error: "Suppression refusee." }));
+    window.alert(error.error || "Suppression refusee.");
     return;
   }
 
@@ -111,7 +120,10 @@ grid.addEventListener("click", async (event) => {
 });
 
 async function bootstrap() {
-  const [itemsResponse, sessionResponse] = await Promise.all([fetch("/api/items"), fetch("/api/session")]);
+  const [itemsResponse, sessionResponse] = await Promise.all([
+    fetch("/api/items", { credentials: "same-origin" }),
+    fetch("/api/session", { credentials: "same-origin" }),
+  ]);
   items = await itemsResponse.json();
   const session = await sessionResponse.json();
   isAdmin = Boolean(session.isAdmin);
@@ -120,7 +132,7 @@ async function bootstrap() {
 }
 
 async function logout() {
-  await fetch("/api/logout", { method: "POST" });
+  await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
   isAdmin = false;
   updateAdminUi();
   render();
@@ -179,20 +191,26 @@ function render() {
 }
 
 function createItemCard(item) {
+  const cardContent = `
+    <div class="image-frame">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy" />
+    </div>
+    <div class="item-info">
+      <span class="item-title">${escapeHtml(item.name)}</span>
+      <span class="item-meta">
+        <span>${formatPrice(item.price)}</span>
+        <span class="item-source">${escapeHtml(item.source)}</span>
+      </span>
+    </div>
+  `;
+
   return `
     <article class="item-shell">
-      <a class="item-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">
-        <div class="image-frame">
-          <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" loading="lazy" />
-        </div>
-        <div class="item-info">
-          <span class="item-title">${escapeHtml(item.name)}</span>
-          <span class="item-meta">
-            <span>${formatPrice(item.price)}</span>
-            <span class="item-source">${escapeHtml(item.source)}</span>
-          </span>
-        </div>
-      </a>
+      ${
+        isAdmin
+          ? `<a class="item-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${cardContent}</a>`
+          : `<div class="item-card visitor-card" aria-label="${escapeHtml(item.name)}">${cardContent}</div>`
+      }
       ${isAdmin ? `<button class="delete-button" type="button" data-delete-id="${escapeHtml(item.id)}">Supprimer</button>` : ""}
     </article>
   `;

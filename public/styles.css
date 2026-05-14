@@ -401,6 +401,14 @@ select {
   background: var(--bg);
 }
 
+.item-card {
+  display: block;
+}
+
+.visitor-card {
+  cursor: default;
+}
+
 .item-shell {
   position: relative;
 }
@@ -451,6 +459,11 @@ select {
 .item-card:hover img {
   transform: scale(1.035);
   filter: contrast(1.04);
+}
+
+.visitor-card:hover img {
+  transform: none;
+  filter: none;
 }
 
 .item-info {
