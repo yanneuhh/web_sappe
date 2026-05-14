@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Archive Bak</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Archive Bak">Archive Bak</a>
+      <nav class="header-actions" aria-label="Actions principales">
+        <a class="nav-link" href="#catalogue">Catalogue</a>
+        <button class="outline-button" id="clearFiltersButton" type="button">Reset filtres</button>
+        <span class="admin-status" id="adminStatus">Lecture seule</span>
+        <button class="outline-button" id="adminLoginButton" type="button">Admin</button>
+        <button class="outline-button" id="logoutButton" type="button" hidden>Deconnexion</button>
+        <button class="accent-button" id="openFormButton" type="button" hidden>Ajouter</button>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="heroTitle">
+        <div class="hero-copy">
+          <p class="kicker">Personal fashion index</p>
+          <h1 id="heroTitle"><span>Archive</span> Bak</h1>
+          <p class="hero-text">
+            Repertorie les vetements que tu trouves en ligne, garde le prix, la categorie et le lien original au meme endroit.
+          </p>
+        </div>
+        <div class="hero-panel" aria-label="Resume de la collection">
+          <span class="panel-label">Collection</span>
+          <strong id="heroCount">0 pieces</strong>
+          <span>Chaque vetement ouvre directement son lien d'achat.</span>
+          <a class="affiliate-link" href="https://www.lovegobuy.com/?invite_code=CT18ON" target="_blank" rel="noreferrer" aria-label="Sign up on Lovegobuy and get 500 euros">
+            <span class="affiliate-icon" aria-hidden="true">
+              <span class="bag-handle"></span>
+              <span class="bag-body">love</span>
+            </span>
+            <span class="affiliate-copy">
+              <span class="affiliate-title">Sign up on Lovegobuy & get 500€</span>
+              <span class="affiliate-subtitle">Order now & claim 500€ - only with this link</span>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Recherche et filtres">
+        <div class="select-wrap">
+          <label for="categoryFilter">Categorie</label>
+          <select id="categoryFilter">
+            <option value="all">Tout</option>
+            <option value="tops">Tops</option>
+            <option value="outerwear">Vestes</option>
+            <option value="pants">Pantalons</option>
+            <option value="shoes">Chaussures</option>
+            <option value="accessories">Accessoires</option>
+          </select>
+        </div>
+
+        <div class="select-wrap">
+          <label for="sortSelect">Tri</label>
+          <select id="sortSelect">
+            <option value="newest">Plus recent</option>
+            <option value="price-asc">Prix croissant</option>
+            <option value="price-desc">Prix decroissant</option>
+            <option value="name">Nom</option>
+          </select>
+        </div>
+
+        <label class="search-box" for="searchInput">
+          <span aria-hidden="true">Search</span>
+          <input id="searchInput" type="search" placeholder="Rechercher une piece..." autocomplete="off" />
+        </label>
+
+        <div class="price-filter" aria-label="Filtre prix">
+          <span>EUR</span>
+          <input id="minPriceInput" type="number" min="0" inputmode="numeric" placeholder="min" />
+          <span>a</span>
+          <input id="maxPriceInput" type="number" min="0" inputmode="numeric" placeholder="max" />
+        </div>
+      </section>
+
+      <section class="catalogue-heading" id="catalogue">
+        <p id="resultCount">0 items</p>
+      </section>
+
+      <section class="grid" id="itemsGrid" aria-live="polite"></section>
+    </main>
+
+    <dialog class="item-dialog" id="itemDialog">
+      <form id="itemForm">
+        <div class="dialog-header">
+          <div>
+            <p class="kicker">Nouvelle piece</p>
+            <h2>Ajouter un vetement</h2>
+          </div>
+          <button class="icon-button" id="closeFormButton" type="button" aria-label="Fermer">x</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Nom
+            <input id="nameInput" type="text" placeholder="Ex: Acne Studios longsleeve" required />
+          </label>
+          <label>
+            Prix (EUR)
+            <input id="priceInput" type="number" min="0" step="1" placeholder="19" required />
+          </label>
+          <label>
+            Categorie
+            <select id="itemCategoryInput" required>
+              <option value="tops">Tops</option>
+              <option value="outerwear">Vestes</option>
+              <option value="pants">Pantalons</option>
+              <option value="shoes">Chaussures</option>
+              <option value="accessories">Accessoires</option>
+            </select>
+          </label>
+          <label>
+            Site
+            <input id="sourceInput" type="text" placeholder="Vinted, Grailed, Nike..." />
+          </label>
+          <label class="wide-field">
+            Lien du vetement
+            <input id="urlInput" type="url" placeholder="https://site.com/vetement" required />
+          </label>
+          <label class="wide-field">
+            URL de l'image
+            <input id="imageInput" type="url" placeholder="https://image.com/photo.jpg" required />
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <p class="form-message" id="formError" role="alert"></p>
+          <button class="accent-button" type="submit">Enregistrer</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="item-dialog" id="loginDialog">
+      <form id="loginForm">
+        <div class="dialog-header">
+          <div>
+            <p class="kicker">Acces prive</p>
+            <h2>Connexion admin</h2>
+          </div>
+          <button class="icon-button" id="closeLoginButton" type="button" aria-label="Fermer">x</button>
+        </div>
+
+        <div class="form-grid">
+          <label class="wide-field">
+            Mot de passe
+            <input id="passwordInput" type="password" autocomplete="current-password" required />
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <p class="form-message" id="loginError" role="alert"></p>
+          <button class="accent-button" type="submit">Se connecter</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>

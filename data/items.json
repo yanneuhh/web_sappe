@@ -1,0 +1,62 @@
+[
+  {
+    "id": "seed-1",
+    "name": "Nike minds mule pack",
+    "price": 18,
+    "category": "shoes",
+    "source": "Nike",
+    "url": "https://www.nike.com/",
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356795000
+  },
+  {
+    "id": "seed-2",
+    "name": "Dior knit zip up",
+    "price": 35,
+    "category": "outerwear",
+    "source": "Grailed",
+    "url": "https://www.grailed.com/",
+    "image": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356796000
+  },
+  {
+    "id": "seed-3",
+    "name": "Acne Studios longsleeve",
+    "price": 19,
+    "category": "tops",
+    "source": "Acne Studios",
+    "url": "https://www.acnestudios.com/",
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356797000
+  },
+  {
+    "id": "seed-4",
+    "name": "Graphic soldier hoodie",
+    "price": 27,
+    "category": "tops",
+    "source": "Vinted",
+    "url": "https://www.vinted.fr/",
+    "image": "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356798000
+  },
+  {
+    "id": "seed-5",
+    "name": "Wide black cargo pants",
+    "price": 42,
+    "category": "pants",
+    "source": "Vestiaire",
+    "url": "https://www.vestiairecollective.com/",
+    "image": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356799000
+  },
+  {
+    "id": "seed-6",
+    "name": "Silver leather bag",
+    "price": 58,
+    "category": "accessories",
+    "source": "Farfetch",
+    "url": "https://www.farfetch.com/",
+    "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1000&q=85",
+    "createdAt": 1715356800000
+  }
+]
