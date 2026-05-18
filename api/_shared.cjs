@@ -21,13 +21,38 @@ async function readItems() {
 async function writeItems(items) {
   const edgeConfig = getEdgeConfigConnection();
   if (edgeConfig) {
-    await writeEdgeConfigItems(edgeConfig, items);
+    await writeEdgeConfigItems(edgeConfig, items, await readEdgeConfigItemsForWrite(edgeConfig));
     return;
   }
 
   assertWritableLocalStorage();
   await fs.mkdir(path.dirname(localItemsPath), { recursive: true });
   await fs.writeFile(localItemsPath, `${JSON.stringify(items, null, 2)}\n`, "utf8");
+}
+
+async function updateItems(updater) {
+  const edgeConfig = getEdgeConfigConnection();
+  if (edgeConfig) {
+    const currentItems = await readEdgeConfigItemsForWrite(edgeConfig);
+    const nextItems = await updater(currentItems.map((item) => ({ ...item })));
+    if (!Array.isArray(nextItems)) {
+      throw new Error("Mise a jour catalogue invalide.");
+    }
+
+    await writeEdgeConfigItems(edgeConfig, nextItems, currentItems);
+    return nextItems;
+  }
+
+  const currentItems = await readLocalItems();
+  const nextItems = await updater(currentItems.map((item) => ({ ...item })));
+  if (!Array.isArray(nextItems)) {
+    throw new Error("Mise a jour catalogue invalide.");
+  }
+
+  assertWritableLocalStorage();
+  await fs.mkdir(path.dirname(localItemsPath), { recursive: true });
+  await fs.writeFile(localItemsPath, `${JSON.stringify(nextItems, null, 2)}\n`, "utf8");
+  return nextItems;
 }
 
 async function readLocalItems() {
@@ -211,29 +236,40 @@ async function fetchEdgeConfigItems(edgeConfig) {
   const catalog = parseEdgeCatalog(rawItems);
   if (!Array.isArray(catalog)) return [];
 
-  return catalog
-    .filter((entry) => entry && !entry.deleted)
-    .map((entry) => ({ ...entry }))
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return normalizeCatalogItems(catalog);
 }
 
-async function writeEdgeConfigItems(edgeConfig, items) {
-  const token = process.env.VERCEL_TOKEN;
-  if (!token) {
-    const error = new Error("VERCEL_TOKEN manquant. Ajoute un token Vercel pour ecrire dans Edge Config.");
-    error.code = "EDGE_CONFIG_WRITE_UNAUTHORIZED";
+async function readEdgeConfigItemsForWrite(edgeConfig) {
+  const token = getVercelWriteToken();
+  const response = await fetch(createEdgeConfigApiUrl(edgeConfig, `item/${encodeURIComponent("catalog")}`), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 404) return [];
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    const error = new Error(`Erreur lecture Edge Config (${response.status}). Verifie VERCEL_TOKEN et EDGE_CONFIG. ${details}`.trim());
+    error.code = "EDGE_CONFIG_READ_FAILED";
     throw error;
   }
 
-  const apiUrl = new URL(`https://api.vercel.com/v1/edge-config/${encodeURIComponent(edgeConfig.id)}/items`);
-  if (process.env.VERCEL_TEAM_ID) {
-    apiUrl.searchParams.set("teamId", process.env.VERCEL_TEAM_ID);
-  }
-  if (process.env.VERCEL_TEAM_SLUG) {
-    apiUrl.searchParams.set("slug", process.env.VERCEL_TEAM_SLUG);
-  }
+  const rawItem = await response.json();
+  const catalog = parseEdgeValue(rawItem?.value);
+  return Array.isArray(catalog) ? normalizeCatalogItems(catalog) : [];
+}
 
-  const response = await fetch(apiUrl, {
+async function writeEdgeConfigItems(edgeConfig, items, previousItems = []) {
+  const token = getVercelWriteToken();
+  const backup = {
+    savedAt: new Date().toISOString(),
+    itemCount: previousItems.length,
+    items: previousItems,
+  };
+
+  const response = await fetch(createEdgeConfigApiUrl(edgeConfig, "items"), {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -241,6 +277,12 @@ async function writeEdgeConfigItems(edgeConfig, items) {
     },
     body: JSON.stringify({
       items: [
+        {
+          operation: "upsert",
+          key: "catalog_backup",
+          value: backup,
+          description: "Archive Bak catalog backup",
+        },
         {
           operation: "upsert",
           key: "catalog",
@@ -257,6 +299,29 @@ async function writeEdgeConfigItems(edgeConfig, items) {
     error.code = "EDGE_CONFIG_WRITE_FAILED";
     throw error;
   }
+}
+
+function getVercelWriteToken() {
+  const token = process.env.VERCEL_TOKEN;
+  if (!token) {
+    const error = new Error("VERCEL_TOKEN manquant. Ajoute un token Vercel pour ecrire dans Edge Config.");
+    error.code = "EDGE_CONFIG_WRITE_UNAUTHORIZED";
+    throw error;
+  }
+
+  return token;
+}
+
+function createEdgeConfigApiUrl(edgeConfig, suffix) {
+  const apiUrl = new URL(`https://api.vercel.com/v1/edge-config/${encodeURIComponent(edgeConfig.id)}/${suffix}`);
+  if (process.env.VERCEL_TEAM_ID) {
+    apiUrl.searchParams.set("teamId", process.env.VERCEL_TEAM_ID);
+  }
+  if (process.env.VERCEL_TEAM_SLUG) {
+    apiUrl.searchParams.set("slug", process.env.VERCEL_TEAM_SLUG);
+  }
+
+  return apiUrl;
 }
 
 function parseEdgeValue(value) {
@@ -281,6 +346,13 @@ function parseEdgeCatalog(rawItems) {
   return [];
 }
 
+function normalizeCatalogItems(catalog) {
+  return catalog
+    .filter((entry) => entry && !entry.deleted)
+    .map((entry) => ({ ...entry }))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
 function assertWritableLocalStorage() {
   if (process.env.VERCEL) {
     const error = new Error("Edge Config non configure pour l'ecriture. Ajoute VERCEL_TOKEN et EDGE_CONFIG.");
@@ -300,6 +372,7 @@ module.exports = {
   methodNotAllowed,
   readItems,
   sendJson,
+  updateItems,
   validateItem,
   writeItems,
 };

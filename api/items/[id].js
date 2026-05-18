@@ -1,4 +1,4 @@
-const { isAdminRequest, methodNotAllowed, readItems, sendJson, writeItems } = require("../_shared.cjs");
+const { isAdminRequest, methodNotAllowed, sendJson, updateItems } = require("../_shared.cjs");
 
 module.exports = async function handler(request, response) {
   try {
@@ -11,17 +11,31 @@ module.exports = async function handler(request, response) {
     }
 
     const itemId = request.query.id;
-    const items = await readItems();
-    const nextItems = items.filter((item) => item.id !== itemId);
+    await updateItems((items) => {
+      const nextItems = items.filter((item) => item.id !== itemId);
 
-    if (nextItems.length === items.length) {
-      return sendJson(response, 404, { error: "Article introuvable." });
-    }
+      if (nextItems.length === items.length) {
+        const error = new Error("Article introuvable.");
+        error.code = "ITEM_NOT_FOUND";
+        throw error;
+      }
 
-    await writeItems(nextItems);
+      return nextItems;
+    });
     return sendJson(response, 200, { deleted: true });
   } catch (error) {
     console.error(error);
+    if (error.code === "ITEM_NOT_FOUND") {
+      return sendJson(response, 404, { error: error.message });
+    }
+    if (
+      error.code === "EDGE_CONFIG_WRITE_REQUIRED" ||
+      error.code === "EDGE_CONFIG_WRITE_UNAUTHORIZED" ||
+      error.code === "EDGE_CONFIG_WRITE_FAILED" ||
+      error.code === "EDGE_CONFIG_READ_FAILED"
+    ) {
+      return sendJson(response, 503, { error: error.message });
+    }
     return sendJson(response, 500, { error: "Erreur serveur." });
   }
 };

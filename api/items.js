@@ -1,5 +1,5 @@
 const crypto = require("node:crypto");
-const { getJsonBody, isAdminRequest, methodNotAllowed, readItems, sendJson, validateItem, writeItems } = require("./_shared.cjs");
+const { getJsonBody, isAdminRequest, methodNotAllowed, readItems, sendJson, updateItems, validateItem } = require("./_shared.cjs");
 
 module.exports = async function handler(request, response) {
   try {
@@ -19,15 +19,13 @@ module.exports = async function handler(request, response) {
         return sendJson(response, 400, { error: error.message });
       }
 
-      const items = await readItems();
       const newItem = {
         id: crypto.randomUUID(),
         ...item,
         createdAt: Date.now(),
       };
 
-      items.unshift(newItem);
-      await writeItems(items);
+      await updateItems((items) => [newItem, ...items]);
       return sendJson(response, 201, newItem);
     }
 
