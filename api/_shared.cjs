@@ -208,12 +208,7 @@ async function fetchEdgeConfigItems(edgeConfig) {
   }
 
   const rawItems = await response.json();
-  if (!Array.isArray(rawItems)) return [];
-
-  const catalogItem = rawItems.find((item) => item && item.key === "catalog");
-  if (!catalogItem) return [];
-
-  const catalog = parseEdgeValue(catalogItem.value);
+  const catalog = parseEdgeCatalog(rawItems);
   if (!Array.isArray(catalog)) return [];
 
   return catalog
@@ -247,7 +242,7 @@ async function writeEdgeConfigItems(edgeConfig, items) {
     body: JSON.stringify({
       items: [
         {
-          operation: "create",
+          operation: "upsert",
           key: "catalog",
           value: items,
           description: "Archive Bak catalog",
@@ -271,6 +266,19 @@ function parseEdgeValue(value) {
   } catch {
     return value;
   }
+}
+
+function parseEdgeCatalog(rawItems) {
+  if (Array.isArray(rawItems)) {
+    const catalogItem = rawItems.find((item) => item && item.key === "catalog");
+    return catalogItem ? parseEdgeValue(catalogItem.value) : [];
+  }
+
+  if (rawItems && typeof rawItems === "object" && Object.hasOwn(rawItems, "catalog")) {
+    return parseEdgeValue(rawItems.catalog);
+  }
+
+  return [];
 }
 
 function assertWritableLocalStorage() {
