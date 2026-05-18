@@ -3,6 +3,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const localItemsPath = path.join(process.cwd(), "data", "items.json");
+const catalogBackupKey = "catalog_backup";
 
 async function readItems() {
   const edgeConfig = getEdgeConfigConnection();
@@ -21,7 +22,7 @@ async function readItems() {
 async function writeItems(items) {
   const edgeConfig = getEdgeConfigConnection();
   if (edgeConfig) {
-    await writeEdgeConfigItems(edgeConfig, items, await readEdgeConfigItemsForWrite(edgeConfig));
+    await writeEdgeConfigItems(edgeConfig, items);
     return;
   }
 
@@ -39,7 +40,7 @@ async function updateItems(updater) {
       throw new Error("Mise a jour catalogue invalide.");
     }
 
-    await writeEdgeConfigItems(edgeConfig, nextItems, currentItems);
+    await writeEdgeConfigItems(edgeConfig, nextItems);
     return nextItems;
   }
 
@@ -257,17 +258,13 @@ async function readEdgeConfigItemsForWrite(edgeConfig) {
   }
 
   const rawItem = await response.json();
-  const catalog = parseEdgeValue(rawItem?.value);
+  const catalog = parseCatalogValue(rawItem?.value);
   return Array.isArray(catalog) ? normalizeCatalogItems(catalog) : [];
 }
 
-async function writeEdgeConfigItems(edgeConfig, items, previousItems = []) {
+async function writeEdgeConfigItems(edgeConfig, items) {
   const token = getVercelWriteToken();
-  const backup = {
-    savedAt: new Date().toISOString(),
-    itemCount: previousItems.length,
-    items: previousItems,
-  };
+  await deleteEdgeConfigBackup(edgeConfig);
 
   const response = await fetch(createEdgeConfigApiUrl(edgeConfig, "items"), {
     method: "PATCH",
@@ -279,14 +276,8 @@ async function writeEdgeConfigItems(edgeConfig, items, previousItems = []) {
       items: [
         {
           operation: "upsert",
-          key: "catalog_backup",
-          value: backup,
-          description: "Archive Bak catalog backup",
-        },
-        {
-          operation: "upsert",
           key: "catalog",
-          value: items,
+          value: serializeCatalog(items),
           description: "Archive Bak catalog",
         },
       ],
@@ -296,6 +287,32 @@ async function writeEdgeConfigItems(edgeConfig, items, previousItems = []) {
   if (!response.ok) {
     const details = await response.text().catch(() => "");
     const error = new Error(`Erreur ecriture Edge Config (${response.status}). Verifie VERCEL_TOKEN et EDGE_CONFIG. ${details}`.trim());
+    error.code = "EDGE_CONFIG_WRITE_FAILED";
+    throw error;
+  }
+}
+
+async function deleteEdgeConfigBackup(edgeConfig) {
+  const token = getVercelWriteToken();
+  const response = await fetch(createEdgeConfigApiUrl(edgeConfig, "items"), {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({
+      items: [
+        {
+          operation: "delete",
+          key: catalogBackupKey,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok && response.status !== 400 && response.status !== 404) {
+    const details = await response.text().catch(() => "");
+    const error = new Error(`Erreur nettoyage Edge Config (${response.status}). Verifie VERCEL_TOKEN et EDGE_CONFIG. ${details}`.trim());
     error.code = "EDGE_CONFIG_WRITE_FAILED";
     throw error;
   }
@@ -336,14 +353,67 @@ function parseEdgeValue(value) {
 function parseEdgeCatalog(rawItems) {
   if (Array.isArray(rawItems)) {
     const catalogItem = rawItems.find((item) => item && item.key === "catalog");
-    return catalogItem ? parseEdgeValue(catalogItem.value) : [];
+    return catalogItem ? parseCatalogValue(catalogItem.value) : [];
   }
 
   if (rawItems && typeof rawItems === "object" && Object.hasOwn(rawItems, "catalog")) {
-    return parseEdgeValue(rawItems.catalog);
+    return parseCatalogValue(rawItems.catalog);
   }
 
   return [];
+}
+
+function parseCatalogValue(value) {
+  const catalog = parseEdgeValue(value);
+  if (catalog && typeof catalog === "object" && catalog.v === 2 && Array.isArray(catalog.items)) {
+    return catalog.items.map(expandCatalogItem);
+  }
+
+  if (Array.isArray(catalog) && catalog.every(Array.isArray)) {
+    return catalog.map(expandCatalogItem);
+  }
+
+  return catalog;
+}
+
+function serializeCatalog(items) {
+  return {
+    v: 2,
+    items: items.map(compactCatalogItem),
+  };
+}
+
+function compactCatalogItem(item) {
+  const compact = [
+    item.id,
+    item.name,
+    item.price,
+    item.category,
+    item.source,
+    item.url,
+    item.image,
+    item.createdAt,
+  ];
+
+  if (item.updatedAt) compact.push(item.updatedAt);
+  return compact;
+}
+
+function expandCatalogItem(item) {
+  if (!Array.isArray(item)) return item;
+
+  const [id, name, price, category, source, url, image, createdAt, updatedAt] = item;
+  return {
+    id,
+    name,
+    price,
+    category,
+    source,
+    url,
+    image,
+    createdAt,
+    ...(updatedAt ? { updatedAt } : {}),
+  };
 }
 
 function normalizeCatalogItems(catalog) {

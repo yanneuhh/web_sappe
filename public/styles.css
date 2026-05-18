@@ -67,11 +67,22 @@ a {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
   letter-spacing: 4px;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(32, 232, 94, 0.12);
 }
 
 .header-actions {
@@ -294,6 +305,17 @@ h1 span {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 2px;
+  font-size: 11px;
+}
+
+.jersey-note {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--green);
+  padding-left: 12px;
+  color: var(--accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  line-height: 1.5;
   font-size: 11px;
 }
 

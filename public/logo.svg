@@ -1,0 +1,10 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Archive Bak</title>
+  <desc id="desc">Modern monogram logo for Archive Bak.</desc>
+  <rect width="160" height="160" rx="28" fill="#080808"/>
+  <rect x="10" y="10" width="140" height="140" rx="22" fill="#111111" stroke="#2A2A2A" stroke-width="2"/>
+  <path d="M33 125L65 35H88L119 125H96L90 106H62L56 125H33ZM68 87H84L76 61L68 87Z" fill="#F3D995"/>
+  <path d="M99 36H121L103 76L128 125H104L86 88L99 36Z" fill="#20E85E"/>
+  <path d="M35 131H125" stroke="#D6C39B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M40 29H120" stroke="#20E85E" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 9"/>
+</svg>
