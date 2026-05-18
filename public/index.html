@@ -89,8 +89,8 @@
       <form id="itemForm">
         <div class="dialog-header">
           <div>
-            <p class="kicker">Nouvelle piece</p>
-            <h2>Ajouter un vetement</h2>
+            <p class="kicker" id="itemDialogMode">Nouvelle piece</p>
+            <h2 id="itemDialogTitle">Ajouter un vetement</h2>
           </div>
           <button class="icon-button" id="closeFormButton" type="button" aria-label="Fermer">x</button>
         </div>
@@ -130,7 +130,7 @@
 
         <div class="dialog-actions">
           <p class="form-message" id="formError" role="alert"></p>
-          <button class="accent-button" type="submit">Enregistrer</button>
+          <button class="accent-button" id="itemSubmitButton" type="submit">Enregistrer</button>
         </div>
       </form>
     </dialog>

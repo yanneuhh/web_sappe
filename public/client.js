@@ -1,5 +1,6 @@
 let items = [];
 let isAdmin = false;
+let editingItemId = "";
 
 const grid = document.querySelector("#itemsGrid");
 const resultCount = document.querySelector("#resultCount");
@@ -19,13 +20,17 @@ const logoutButton = document.querySelector("#logoutButton");
 const adminStatus = document.querySelector("#adminStatus");
 const loginError = document.querySelector("#loginError");
 const formError = document.querySelector("#formError");
+const itemDialogMode = document.querySelector("#itemDialogMode");
+const itemDialogTitle = document.querySelector("#itemDialogTitle");
+const itemSubmitButton = document.querySelector("#itemSubmitButton");
 
 adminLoginButton.addEventListener("click", () => loginDialog.showModal());
-openFormButton.addEventListener("click", () => itemDialog.showModal());
+openFormButton.addEventListener("click", openCreateForm);
 logoutButton.addEventListener("click", logout);
 document.querySelector("#closeLoginButton").addEventListener("click", () => loginDialog.close());
-document.querySelector("#closeFormButton").addEventListener("click", () => itemDialog.close());
+document.querySelector("#closeFormButton").addEventListener("click", closeItemDialog);
 document.querySelector("#clearFiltersButton").addEventListener("click", clearFilters);
+itemDialog.addEventListener("close", resetItemFormState);
 
 [categoryFilter, sortSelect, searchInput, minPriceInput, maxPriceInput].forEach((control) => {
   control.addEventListener("input", render);
@@ -67,26 +72,40 @@ itemForm.addEventListener("submit", async (event) => {
     image: document.querySelector("#imageInput").value.trim(),
   };
 
-  const response = await fetch("/api/items", {
+  const isEditing = Boolean(editingItemId);
+  const response = await fetch(isEditing ? "/api/update-item" : "/api/items", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newItem),
+    body: JSON.stringify(isEditing ? { id: editingItemId, ...newItem } : newItem),
   });
 
   if (!response.ok) {
-    formError.textContent = await getResponseError(response, "Ajout refuse.");
+    formError.textContent = await getResponseError(response, isEditing ? "Modification refusee." : "Ajout refuse.");
     return;
   }
 
   const savedItem = await response.json();
-  items = [savedItem, ...items];
-  itemForm.reset();
-  itemDialog.close();
+  items = isEditing
+    ? items.map((item) => (item.id === savedItem.id ? savedItem : item))
+    : [savedItem, ...items];
+  closeItemDialog();
   render();
 });
 
 grid.addEventListener("click", async (event) => {
+  const editButton = event.target.closest("[data-edit-id]");
+  if (editButton) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!isAdmin) return;
+
+    const item = items.find((candidate) => candidate.id === editButton.dataset.editId);
+    if (item) openEditForm(item);
+    return;
+  }
+
   const deleteButton = event.target.closest("[data-delete-id]");
   if (!deleteButton) return;
 
@@ -143,6 +162,41 @@ function updateAdminUi() {
   logoutButton.hidden = !isAdmin;
   adminLoginButton.hidden = isAdmin;
   adminStatus.textContent = isAdmin ? "Mode admin" : "Lecture seule";
+}
+
+function openCreateForm() {
+  editingItemId = "";
+  itemForm.reset();
+  formError.textContent = "";
+  itemDialogMode.textContent = "Nouvelle piece";
+  itemDialogTitle.textContent = "Ajouter un vetement";
+  itemSubmitButton.textContent = "Enregistrer";
+  itemDialog.showModal();
+}
+
+function openEditForm(item) {
+  editingItemId = item.id;
+  formError.textContent = "";
+  document.querySelector("#nameInput").value = item.name;
+  document.querySelector("#priceInput").value = item.price;
+  document.querySelector("#itemCategoryInput").value = item.category;
+  document.querySelector("#sourceInput").value = item.source;
+  document.querySelector("#urlInput").value = item.url;
+  document.querySelector("#imageInput").value = item.image;
+  itemDialogMode.textContent = "Modification";
+  itemDialogTitle.textContent = "Modifier un vetement";
+  itemSubmitButton.textContent = "Mettre a jour";
+  itemDialog.showModal();
+}
+
+function closeItemDialog() {
+  itemDialog.close();
+}
+
+function resetItemFormState() {
+  editingItemId = "";
+  itemForm.reset();
+  formError.textContent = "";
 }
 
 function clearFilters() {
@@ -205,12 +259,15 @@ function createItemCard(item) {
 
   return `
     <article class="item-shell">
+      <div class="item-card visitor-card" aria-label="${escapeHtml(item.name)}">${cardContent}</div>
       ${
         isAdmin
-          ? `<a class="item-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${cardContent}</a>`
-          : `<div class="item-card visitor-card" aria-label="${escapeHtml(item.name)}">${cardContent}</div>`
+          ? `<div class="item-actions">
+              <button class="edit-button" type="button" data-edit-id="${escapeHtml(item.id)}">Modifier</button>
+              <button class="delete-button" type="button" data-delete-id="${escapeHtml(item.id)}">Supprimer</button>
+            </div>`
+          : ""
       }
-      ${isAdmin ? `<button class="delete-button" type="button" data-delete-id="${escapeHtml(item.id)}">Supprimer</button>` : ""}
     </article>
   `;
 }

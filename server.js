@@ -7,6 +7,7 @@ const loginHandler = require("./api/login");
 const logoutHandler = require("./api/logout");
 const sessionHandler = require("./api/session");
 const deleteItemHandler = require("./api/delete-item");
+const updateItemHandler = require("./api/update-item");
 
 const rootDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 4173);
@@ -49,6 +50,11 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === "/api/delete-item") {
       request.body = await readJsonBody(request);
       return deleteItemHandler(request, response);
+    }
+
+    if (url.pathname === "/api/update-item") {
+      request.body = await readJsonBody(request);
+      return updateItemHandler(request, response);
     }
 
     if (request.method === "GET") {
