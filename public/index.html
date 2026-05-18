@@ -12,6 +12,7 @@
       <nav class="header-actions" aria-label="Actions principales">
         <a class="nav-link" href="#catalogue">Catalogue</a>
         <button class="outline-button" id="clearFiltersButton" type="button">Reset filtres</button>
+        <button class="outline-button" id="shippingButton" type="button" hidden>Frais de port</button>
         <span class="admin-status" id="adminStatus">Lecture seule</span>
         <button class="outline-button" id="adminLoginButton" type="button">Admin</button>
         <button class="outline-button" id="logoutButton" type="button" hidden>Deconnexion</button>
@@ -52,6 +53,7 @@
             <option value="pants">Pantalons</option>
             <option value="shoes">Chaussures</option>
             <option value="accessories">Accessoires</option>
+            <option value="football-jerseys">Maillots de foot</option>
           </select>
         </div>
 
@@ -112,6 +114,7 @@
               <option value="pants">Pantalons</option>
               <option value="shoes">Chaussures</option>
               <option value="accessories">Accessoires</option>
+              <option value="football-jerseys">Maillots de foot</option>
             </select>
           </label>
           <label>
@@ -131,6 +134,68 @@
         <div class="dialog-actions">
           <p class="form-message" id="formError" role="alert"></p>
           <button class="accent-button" id="itemSubmitButton" type="submit">Enregistrer</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="item-dialog shipping-dialog" id="shippingDialog">
+      <form id="shippingForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="kicker">France uniquement</p>
+            <h2>Frais de port</h2>
+          </div>
+          <button class="icon-button" id="closeShippingButton" type="button" aria-label="Fermer">x</button>
+        </div>
+
+        <div class="shipping-layout">
+          <div class="shipping-inputs" aria-label="Articles du colis">
+            <label>
+              Maillots de foot
+              <input class="shipping-count" id="shipFootballJerseys" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+            <label>
+              Tops / t-shirts
+              <input class="shipping-count" id="shipTops" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+            <label>
+              Vestes / hoodies
+              <input class="shipping-count" id="shipOuterwear" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+            <label>
+              Pantalons
+              <input class="shipping-count" id="shipPants" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+            <label>
+              Chaussures
+              <input class="shipping-count" id="shipShoes" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+            <label>
+              Accessoires
+              <input class="shipping-count" id="shipAccessories" type="text" inputmode="numeric" pattern="[0-9]*" value="0" />
+            </label>
+          </div>
+
+          <div class="shipping-options" aria-label="Options du colis">
+            <label>
+              Emballage
+              <select id="shipPackaging">
+                <option value="compact">Compact sans boites chaussures</option>
+                <option value="standard">Standard</option>
+                <option value="boxes">Avec boites chaussures</option>
+              </select>
+            </label>
+            <label>
+              Ligne
+              <select id="shipLine">
+                <option value="taxFree">Love-EU Tax Free</option>
+                <option value="dhl">LGB European DHL</option>
+                <option value="economy">Economy EU</option>
+              </select>
+            </label>
+          </div>
+
+          <output class="shipping-result" id="shippingResult" aria-live="polite"></output>
         </div>
       </form>
     </dialog>

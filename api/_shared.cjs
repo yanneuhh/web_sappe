@@ -155,7 +155,7 @@ function validateItem(body) {
     image: String(body?.image || "").trim(),
   };
 
-  const categories = new Set(["tops", "outerwear", "pants", "shoes", "accessories"]);
+  const categories = new Set(["tops", "outerwear", "pants", "shoes", "accessories", "football-jerseys"]);
   if (!item.name || item.name.length > 120) throw new Error("Nom invalide.");
   if (!Number.isFinite(item.price) || item.price < 0 || item.price > 100000) throw new Error("Prix invalide.");
   if (!categories.has(item.category)) throw new Error("Categorie invalide.");

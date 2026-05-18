@@ -587,7 +587,9 @@ option {
   gap: 12px;
 }
 
-.form-grid label {
+.form-grid label,
+.shipping-inputs label,
+.shipping-options label {
   display: grid;
   gap: 8px;
   padding: 12px;
@@ -598,7 +600,9 @@ option {
 }
 
 .form-grid input,
-.form-grid select {
+.form-grid select,
+.shipping-inputs input,
+.shipping-options select {
   min-height: 30px;
   padding: 0;
   text-transform: none;
@@ -621,6 +625,101 @@ option {
   font-size: 12px;
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+.shipping-dialog {
+  width: min(820px, calc(100vw - 32px));
+}
+
+.shipping-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.shipping-inputs,
+.shipping-options {
+  display: grid;
+  gap: 12px;
+}
+
+.shipping-inputs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.shipping-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shipping-inputs label,
+.shipping-options label {
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.shipping-count {
+  text-align: right;
+}
+
+.shipping-result {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(214, 195, 155, 0.38);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(214, 195, 155, 0.07);
+}
+
+.shipping-result strong {
+  color: var(--accent-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 44px;
+  font-weight: 400;
+}
+
+.shipping-result > span,
+.shipping-result small,
+.shipping-warning {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.shipping-result dl {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.shipping-result div {
+  min-width: 0;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.shipping-result dt,
+.shipping-result dd {
+  margin: 0;
+}
+
+.shipping-result dt {
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  font-size: 10px;
+}
+
+.shipping-result dd {
+  margin-top: 6px;
+  color: var(--text);
+  font-weight: 750;
+}
+
+.shipping-warning {
+  color: #f0a092;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
 }
 
 @keyframes affiliatePulse {
@@ -823,6 +922,12 @@ option {
 
   .toolbar,
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-inputs,
+  .shipping-options,
+  .shipping-result dl {
     grid-template-columns: 1fr;
   }
 
