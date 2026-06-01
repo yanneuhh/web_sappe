@@ -300,7 +300,11 @@ function createItemCard(item) {
 
   return `
     <article class="item-shell">
-      <div class="item-card visitor-card" aria-label="${escapeHtml(item.name)}">${cardContent}</div>
+      ${
+        isAdmin
+          ? `<a class="item-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(item.name)}">${cardContent}</a>`
+          : `<div class="item-card visitor-card" aria-label="${escapeHtml(item.name)}">${cardContent}</div>`
+      }
       ${
         isAdmin
           ? `<div class="item-actions">
